@@ -8,7 +8,7 @@ const port = 80;
 
 app.use(bodyParser.json());
 app.use(cors());
-
+// github 연결 확인용
 // MySQL 연결 설정
 const db = mysql.createConnection({
   host: 'localhost',
