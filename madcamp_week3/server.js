@@ -2,6 +2,8 @@ const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const port = 80;
@@ -25,14 +27,32 @@ db.connect(err => {
   console.log('Connected to MySQL');
 });
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+app.post('/uploadPhoto', upload.single('photo'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No file uploaded.');
+  }
+  res.status(200).send('File uploaded successfully');
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}/`);
 });
 
 app.post('/checkUser', (req, res) => {
   const { login_method, token_id } = req.body;
-  console.log('${login_method}');
-  console.log('${token_id}');
+  console.log(`${login_method}`);
+  console.log(`${token_id}`);
   if (login_method === "KAKAO" || login_method === "NAVER") {
     const sql = 'SELECT COUNT(id) AS cnt FROM users WHERE login_method = ? AND login_token_id = ?';
     db.query(sql, [login_method, token_id], (err, results) => {
@@ -41,7 +61,7 @@ app.post('/checkUser', (req, res) => {
         res.status(500).send('사용자 조회 오류');
         return;
       }
-      console.log('${login_method.toLowerCase()} find...');
+      console.log(`${login_method.toLowerCase()} find...`);
       if (results[0].cnt === 0) {
         res.status(300).send('사용자 정보 없음');
       } else {
@@ -77,46 +97,46 @@ app.post('/checkUserNone', (req, res) => {
 });
 
 app.post('/registerUser', async (req, res) => {
-    const { name, id, password, token_id, token_type } = req.body;
-  
-    const countSql = 'SELECT COUNT(id) AS userCount FROM users';
-  
-    try {
-      const result = await new Promise((resolve, reject) => {
-        db.query(countSql, (err, result) => {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        });
+  const { name, id, password, token_id, token_type } = req.body;
+
+  const countSql = 'SELECT COUNT(id) AS userCount FROM users';
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      db.query(countSql, (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
       });
-  
-      const userCount = result[0].userCount;
-      const user_id = userCount + 1;
-  
-      console.log(`${name}`);
-      console.log(`${id}`);
-      console.log(`${password}`);
-      console.log(`${user_id}`);
-      console.log(`${token_id}`);
-      console.log(`${token_type}`);
-  
-      const insertSql = 'INSERT INTO users (userName, following_user_id, following_user_pw, coin, login_method, login_token_id) VALUES (?, ?, ?, ?, ?, ?)';
-      await new Promise((resolve, reject) => {
-        db.query(insertSql, [name, id, password, 100, token_type, token_id], (err, result) => {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        });
+    });
+
+    const userCount = result[0].userCount;
+    const user_id = userCount + 1;
+
+    console.log(`${name}`);
+    console.log(`${id}`);
+    console.log(`${password}`);
+    console.log(`${user_id}`);
+    console.log(`${token_id}`);
+    console.log(`${token_type}`);
+
+    const insertSql = 'INSERT INTO users (userName, following_user_id, following_user_pw, coin, login_method, login_token_id) VALUES (?, ?, ?, ?, ?, ?)';
+    await new Promise((resolve, reject) => {
+      db.query(insertSql, [name, id, password, 100, token_type, token_id], (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(result);
       });
-      console.log("database updated");
-      res.status(200).send('DB update end')
-    } catch (error) {
-      console.error('Error executing:', error);
-      res.status(500).send('Error executing');
-    }
-  });
+    });
+    console.log("database updated");
+    res.status(200).send('DB update end')
+  } catch (error) {
+    console.error('Error executing:', error);
+    res.status(500).send('Error executing');
+  }
+});
 
 app.get('/getQuiz', (req, res) => {
   const sql = 'SELECT * FROM quiz ORDER BY RAND() LIMIT 1';
@@ -164,4 +184,3 @@ app.post('/updateUserCoins', (req, res) => {
       res.status(200).send('코인 업데이트 성공');
   });
 });
-
