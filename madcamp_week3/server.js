@@ -8,7 +8,7 @@ const port = 80;
 
 app.use(bodyParser.json());
 app.use(cors());
-// github 연결 확인용
+
 // MySQL 연결 설정
 const db = mysql.createConnection({
   host: 'localhost',
@@ -30,28 +30,51 @@ app.listen(port, () => {
 });
 
 app.post('/checkUser', (req, res) => {
-    const { login_method, token_id } = req.body;
-    console.log(`${login_method}`);
-    console.log(`${token_id}`);
-    if (login_method === "KAKAO" || login_method === "NAVER" || login_method === "NONE") {
-      const sql = 'SELECT COUNT(id) AS cnt FROM users WHERE login_method = ? AND login_token_id = ?';
-      db.query(sql, [login_method, token_id], (err, results) => {
-        if (err) {
+  const { login_method, token_id } = req.body;
+  console.log('${login_method}');
+  console.log('${token_id}');
+  if (login_method === "KAKAO" || login_method === "NAVER") {
+    const sql = 'SELECT COUNT(id) AS cnt FROM users WHERE login_method = ? AND login_token_id = ?';
+    db.query(sql, [login_method, token_id], (err, results) => {
+      if (err) {
+        console.error('사용자 조회 오류: ', err);
+        res.status(500).send('사용자 조회 오류');
+        return;
+      }
+      console.log('${login_method.toLowerCase()} find...');
+      if (results[0].cnt === 0) {
+        res.status(300).send('사용자 정보 없음');
+      } else {
+        res.status(200).send('사용자 정보 있음');
+      }
+    });
+  } else {
+    res.status(400).send('잘못된 로그인 방법');
+  }
+});
+
+app.post('/checkUserNone', (req, res) => {
+  const { token_id, password } = req.body;
+  console.log(`${token_id}`);
+  console.log(`${password}`);
+  
+  const sql = 'SELECT COUNT(id) AS cnt FROM users WHERE login_method = ? AND login_token_id = ? AND following_user_pw = ?';
+  const params = ["NONE", token_id, password];
+
+  db.query(sql, params, (err, results) => {
+      if (err) {
           console.error('사용자 조회 오류: ', err);
           res.status(500).send('사용자 조회 오류');
           return;
-        }
-        console.log(`${login_method.toLowerCase()} find...`);
-        if (results[0].cnt === 0) {
+      }
+      console.log(`none method find...`);
+      if (results[0].cnt === 0) {
           res.status(300).send('사용자 정보 없음');
-        } else {
+      } else {
           res.status(200).send('사용자 정보 있음');
-        }
-      });
-    } else {
-      res.status(400).send('잘못된 로그인 방법');
-    }
+      }
   });
+});
 
 app.post('/registerUser', async (req, res) => {
     const { name, id, password, token_id, token_type } = req.body;
