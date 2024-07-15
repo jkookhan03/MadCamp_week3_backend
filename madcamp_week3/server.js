@@ -135,3 +135,33 @@ app.get('/getQuiz', (req, res) => {
   });
 });
 
+app.post('/getUserInfo', (req, res) => {
+  const { token_id } = req.body;
+  const sql = 'SELECT userName, coin FROM users WHERE login_token_id = ?';
+  db.query(sql, [token_id], (err, results) => {
+      if (err) {
+          console.error('사용자 정보 조회 오류: ', err);
+          res.status(500).send('사용자 정보 조회 오류');
+          return;
+      }
+      if (results.length > 0) {
+          res.status(200).json(results[0]);
+      } else {
+          res.status(300).send('사용자 정보 없음');
+      }
+  });
+});
+
+app.post('/updateUserCoins', (req, res) => {
+  const { token_id, coins } = req.body;
+  const sql = 'UPDATE users SET coin = coin + ? WHERE login_token_id = ?';
+  db.query(sql, [coins, token_id], (err, results) => {
+      if (err) {
+          console.error('코인 업데이트 오류: ', err);
+          res.status(500).send('코인 업데이트 오류');
+          return;
+      }
+      res.status(200).send('코인 업데이트 성공');
+  });
+});
+
