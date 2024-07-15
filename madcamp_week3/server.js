@@ -118,3 +118,20 @@ app.post('/registerUser', async (req, res) => {
     }
   });
 
+app.get('/getQuiz', (req, res) => {
+  const sql = 'SELECT * FROM quiz ORDER BY RAND() LIMIT 1';
+
+  db.query(sql, (err, results) => {
+      if (err) {
+          console.error('퀴즈 조회 오류: ', err);
+          res.status(500).send('퀴즈 조회 오류');
+          return;
+      }
+      if (results.length > 0) {
+          res.status(200).json(results[0]);
+      } else {
+          res.status(300).send('퀴즈 정보 없음');
+      }
+  });
+});
+
