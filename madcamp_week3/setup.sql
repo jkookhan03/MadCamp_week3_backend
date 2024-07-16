@@ -20,6 +20,14 @@ CREATE TABLE IF NOT EXISTS quiz (
     answer TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS purchased_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
 USE madcamp_week3;
 
 INSERT INTO quiz (question, option1, option2, answer) VALUES

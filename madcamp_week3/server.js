@@ -184,3 +184,104 @@ app.post('/updateUserCoins', (req, res) => {
       res.status(200).send('코인 업데이트 성공');
   });
 });
+
+app.post('/getPurchasedItems', (req, res) => {
+  const { token_id } = req.body;
+  const sql = `
+    SELECT pi.item_name 
+    FROM purchased_items pi 
+    JOIN users u ON pi.user_id = u.id 
+    WHERE u.login_token_id = ?
+  `;
+  db.query(sql, [token_id], (err, results) => {
+    if (err) {
+      console.error('구매한 아이템 조회 오류: ', err);
+      res.status(500).send('구매한 아이템 조회 오류');
+      return;
+    }
+    res.status(200).json({ items: results.map(r => r.item_name) });
+  });
+});
+
+app.post('/purchaseItem', (req, res) => {
+  const { token_id, item_name, item_cost } = req.body;
+
+  const getUserSql = 'SELECT id, coin FROM users WHERE login_token_id = ?';
+  db.query(getUserSql, [token_id], (err, results) => {
+    if (err) {
+      console.error('사용자 조회 오류: ', err);
+      res.status(500).send('사용자 조회 오류');
+      return;
+    }
+
+    if (results.length === 0) {
+      res.status(400).send('사용자 정보 없음');
+      return;
+    }
+
+    const userId = results[0].id;
+    const userCoins = results[0].coin;
+
+    if (userCoins < item_cost) {
+      res.status(400).send('코인이 부족합니다');
+      return;
+    }
+
+    const purchaseSql = 'INSERT INTO purchased_items (user_id, item_name) VALUES (?, ?)';
+    const updateCoinsSql = 'UPDATE users SET coin = coin - ? WHERE id = ?';
+
+    db.beginTransaction(err => {
+      if (err) {
+        console.error('트랜잭션 오류: ', err);
+        res.status(500).send('트랜잭션 오류');
+        return;
+      }
+
+      db.query(purchaseSql, [userId, item_name], (err, results) => {
+        if (err) {
+          return db.rollback(() => {
+            console.error('아이템 구매 오류: ', err);
+            res.status(500).send('아이템 구매 오류');
+          });
+        }
+
+        db.query(updateCoinsSql, [item_cost, userId], (err, results) => {
+          if (err) {
+            return db.rollback(() => {
+              console.error('코인 업데이트 오류: ', err);
+              res.status(500).send('코인 업데이트 오류');
+            });
+          }
+
+          db.commit(err => {
+            if (err) {
+              return db.rollback(() => {
+                console.error('커밋 오류: ', err);
+                res.status(500).send('커밋 오류');
+              });
+            }
+
+            res.status(200).send('아이템 구매 성공');
+          });
+        });
+      });
+    });
+  });
+});
+
+app.post('/getUserCoins', (req, res) => {
+  const { token_id } = req.body;
+  const sql = 'SELECT coin FROM users WHERE login_token_id = ?';
+  db.query(sql, [token_id], (err, results) => {
+    if (err) {
+      console.error('코인 조회 오류: ', err);
+      res.status(500).send('코인 조회 오류');
+      return;
+    }
+    if (results.length > 0) {
+      res.status(200).json({ coins: results[0].coin });
+    } else {
+      res.status(300).send('사용자 정보 없음');
+    }
+  });
+});
