@@ -27,6 +27,13 @@ CREATE TABLE IF NOT EXISTS purchased_items (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS daily_waste (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  date DATE NOT NULL,
+  amount INT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 USE madcamp_week3;
 

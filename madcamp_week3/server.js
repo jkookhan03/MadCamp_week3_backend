@@ -32,9 +32,10 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    cb(null, `striming.jpg`);
   },
 });
+//${Date.now()}-${file.originalname}
 
 const upload = multer({ storage });
 
@@ -282,6 +283,39 @@ app.post('/getUserCoins', (req, res) => {
       res.status(200).json({ coins: results[0].coin });
     } else {
       res.status(300).send('사용자 정보 없음');
+    }
+  });
+});
+
+app.get('/daily_waste', (req, res) => {
+  const userId = req.query.user_id;
+  const query = 'SELECT date, amount FROM daily_waste WHERE user_id = ? ORDER BY date';
+  
+  db.query(query, [userId], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error });
+    }
+    res.json(results);
+  });
+});
+
+// userId를 가져오는 엔드포인트
+app.post('/getUserId', (req, res) => {
+  const token = req.body.token;
+  console.log(`Received request to get userId with token: ${token}`); // 로그 추가
+
+  const query = 'SELECT id FROM users WHERE login_token_id = ?';
+  db.query(query, [token], (error, results) => {
+    if (error) {
+      console.error('Database query error:', error); // 로그 추가
+      return res.status(500).json({ error: 'Database query failed' });
+    }
+    if (results.length > 0) {
+      console.log(`Found userId: ${results[0].id}`); // 로그 추가
+      return res.status(200).json({ userId: results[0].id });
+    } else {
+      console.log('User not found'); // 로그 추가
+      return res.status(404).json({ error: 'User not found' });
     }
   });
 });
