@@ -27,25 +27,6 @@ db.connect(err => {
   console.log('Connected to MySQL');
 });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, `striming.jpg`);
-  },
-});
-//${Date.now()}-${file.originalname}
-
-const upload = multer({ storage });
-
-app.post('/uploadPhoto', upload.single('photo'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send('No file uploaded.');
-  }
-  res.status(200).send('File uploaded successfully');
-});
-
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}/`);
 });
@@ -316,6 +297,49 @@ app.post('/getUserId', (req, res) => {
     } else {
       console.log('User not found'); // 로그 추가
       return res.status(404).json({ error: 'User not found' });
+    }
+  });
+});
+
+// 사진 업로드 성공 후 daily_waste 업데이트 엔드포인트
+app.post('/updateDailyWaste', (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).send('user_id is required');
+  }
+
+  // 오늘 날짜 구하기
+  const today = new Date().toISOString().split('T')[0];
+
+  // daily_waste 테이블에서 오늘 날짜와 user_id에 해당하는 레코드가 있는지 확인
+  const checkQuery = 'SELECT * FROM daily_waste WHERE user_id = ? AND date = ?';
+  db.query(checkQuery, [user_id, today], (err, results) => {
+    if (err) {
+      console.error('Error checking daily_waste:', err);
+      return res.status(500).send('Error checking daily_waste');
+    }
+
+    if (results.length > 0) {
+      // 기존 레코드가 있으면 amount를 1 증가
+      const updateQuery = 'UPDATE daily_waste SET amount = amount + 1 WHERE user_id = ? AND date = ?';
+      db.query(updateQuery, [user_id, today], (err, updateResults) => {
+        if (err) {
+          console.error('Error updating daily_waste:', err);
+          return res.status(500).send('Error updating daily_waste');
+        }
+        res.status(200).send('daily_waste updated');
+      });
+    } else {
+      // 기존 레코드가 없으면 새 레코드 삽입
+      const insertQuery = 'INSERT INTO daily_waste (user_id, date, amount) VALUES (?, ?, 1)';
+      db.query(insertQuery, [user_id, today], (err, insertResults) => {
+        if (err) {
+          console.error('Error inserting into daily_waste:', err);
+          return res.status(500).send('Error inserting into daily_waste');
+        }
+        res.status(200).send('daily_waste record created');
+      });
     }
   });
 });
